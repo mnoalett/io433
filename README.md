@@ -11,7 +11,7 @@
 ## New features
 
 * Configuration menus for CC1101 setup to change frequency, and bandwidth;
-* Frequency analizer menu to determine the remote's frequency by scanning signals strength at all the frequencies available;
+* Frequency analyzer menu to determine the remote's frequency by scanning signals strength at all the frequencies available;
 * Bruteforce menu for Came, Nice and Faac 12 bit remotes. Other protocols can be added by editing protocol.h;
 * Added a jammer feature;
 * Added Telsa charge port opener;
