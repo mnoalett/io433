@@ -7,7 +7,7 @@
 #include "esp_bt.h"
 #include "esp_wifi.h"
 #include "driver/adc.h"
-
+#include "protocol.h"
 
 #define LOOPDELAY 20
 #define HIBERNATEMS 30*1000
@@ -70,9 +70,6 @@ int trycopy() {
           Serial.println("End of signal detected!");
           break;
         }
-        /*
-        Serial.println("End of signal!");
-        break;*/
       }
     }
     else {
@@ -303,50 +300,156 @@ void rawout() {
   Serial.println((t*1.0)/(tt/1000.0));
 }
 
-// THIS IS OBVIOUSLY NOT REAL TIME
-void monitormode() {
+void freqenciesAnalyzer() {
+  tft.fillScreen(TFT_BLACK);
+  tft.setFreeFont(FMB9);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+  tft.drawString("Scanning...", 50, 15, GFXFF);
+  tft.setFreeFont(FMB18);
+  tft.drawString("000.000 MHz", 10, 50, GFXFF);
+
+  bool endloop = false;
+  int totalFrequencies = sizeof(frequencies) / sizeof(frequencies[0]);
+  int rssi;
+  int rssiThreshold = -60;
+  int markRssi=-1000;
+  double markFreq = 0;
+
   CCInit();
+  CCSetMhz(used_frequency);
+  CCSetRxBW(used_bandwidth);
   CCSetRx();
   delay(50);
- 
-  int k = 1;
-  int i = 0;
-  int rssi = 0;
-  int maxrssi = -999;
-  int minrssi = 0;
-  int oldy = 0;
-  int newy = 0;
 
-  tft.fillScreen(TFT_BLACK);
-  tft.drawRect(0, 0, WIDTH-1, HEIGHT-1, TFT_WHITE);
-  tft.setFreeFont(FMB9);
-  tft.setTextColor(TFT_RED, TFT_WHITE);
+  while (!endloop) {
+    for (int i=0; i<totalFrequencies; i++) {
+      CCSetMhz(frequencies[i]);
+      delay(20);
+      rssi = ELECHOUSE_cc1101.getRssi();
+
+      Serial.print("freq: ");
+      Serial.print(frequencies[i]);
+      Serial.print(" rssi:");
+      Serial.println(rssi);
+
+      if (rssi > rssiThreshold) {
+        if (rssi > markRssi) {
+          markRssi = rssi;
+          markFreq = frequencies[i]; 
+        } else {
+          endloop = true;
+          break;
+        }
+      }
+      if (SMN_isAnyButtonPressed()) {
+        endloop = true;
+      }
+    }
+  }
   
-  delay(200);
-  while(true) {
-    i = CCAvgRead();
-    tft.drawLine(k, HEIGHT/2, k, HEIGHT-16, TFT_BLACK);
-    if (i) newy =  HEIGHT/2;
-    else newy = HEIGHT-16;
-    tft.drawLine(k,oldy,k,newy, TFT_GREEN);
-    oldy=newy;
-    if (k%50 == 0) rssi = ELECHOUSE_cc1101.getRssi();
-    maxrssi = max(maxrssi,rssi);
-    minrssi = min(minrssi,rssi);
-    delayMicroseconds(200);
-    if (k++ >= WIDTH-5) {
-      tft.drawString(" RSSI: M      m      ",7,10 , GFXFF);
-      tft.drawString(String(maxrssi),10*10,10 , GFXFF);
-      tft.drawString(String(minrssi),18*10,10 , GFXFF);
-      k = 1;
-      maxrssi = -999;
-      minrssi = 0;
-      if (SMN_isUpButtonPressed()) return;
-      while (SMN_isDownButtonPressed()) delay(100);
+  if (markFreq != 0) {
+    tft.fillScreen(TFT_BLACK);
+    tft.drawString(String(markFreq) + " MHz", 10, 50, GFXFF);
+    tft.setFreeFont(FMB12);
+    tft.drawString("RSSI: " + String(markRssi), 10, HEIGHT-20, GFXFF);
+    
+    while (true) {
+      if (SMN_isAnyButtonPressed()) {
+        return;
+      }
     }
   }
 }
 
+void jammer() {
+  tft.fillScreen(TFT_BLACK);
+  tft.setFreeFont(FMB9);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+
+  Serial.println("Jammer started");
+  bool endloop = false;
+
+  CCInit();
+  CCSetMhz(used_frequency);
+  CCSetTx();
+  delay(50);
+
+  while (!endloop) {
+    CCWrite(HIGH);
+    if (SMN_isAnyButtonPressed()) {
+      endloop = true;
+    }
+    drawSineWave();
+  }
+
+  CCSetRx();
+  Serial.println("Jammer stopped");
+}
+
+void sendTeslaSignal() {
+  CCInit();
+  CCSetTx();
+  delay(50);
+  for (uint8_t t=0; t<signalRepetitions; t++) {
+    for (uint8_t i=0; i<teslaMessageLength; i++) {
+      for (int8_t bit=7; bit>=0; bit--) { // MSB
+        CCWrite((sequence[i] & (1 << bit)) != 0 ? HIGH : LOW);
+        delayMicroseconds(teslaPulseWidth);
+      }
+    }
+    CCWrite(LOW);
+    delay(teslaMessageDistance);
+  }
+  CCSetRx();
+}
+
+void sendCode(long code, Protocol protocol) {
+  CCInit();
+  CCSetMhz(used_frequency);
+  CCSetTx();
+  delay(50);
+  for (int j = 0; j < protocol.repetition; j++) {
+    CCWrite(HIGH);
+    delayMicroseconds(protocol.high);
+    CCWrite(LOW);
+    for (int i = protocol.nbits; i > 0; i--) {
+      byte b = bitRead(code, i - 1);
+      if (b) {
+        CCWrite(LOW); // 1
+        delayMicroseconds(protocol.one.high);
+        CCWrite(HIGH);
+        delayMicroseconds(protocol.one.low);
+      } else {
+        CCWrite(LOW); // 0
+        delayMicroseconds(protocol.zero.high);
+        CCWrite(HIGH);
+        delayMicroseconds(protocol.zero.low);
+      }
+    }
+    CCWrite(LOW);
+    delayMicroseconds(protocol.preamble);
+  }
+  CCSetRx();
+}
+
+void bruteforce(int protocolIndex) {
+  tft.fillScreen(TFT_BLACK);
+  tft.setFreeFont(FMB24);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+  Protocol protocol = protocols[protocolIndex];
+
+  int keyset = pow(2, protocol.nbits);
+
+  for (int i=0; i<=keyset; i++) {
+    sendCode(i, protocol);
+    if (SMN_isAnyButtonPressed()) {
+      break;
+    }
+    int progress = map(i, 0, keyset, 0, 100);
+    tft.drawString(String(progress) + "%", 90, 45, GFXFF);
+    drawProgressBar(20, HEIGHT-45, 200, 20, progress, GREEN);
+  }
+}
 
 void setup() {
   
@@ -361,10 +464,18 @@ void setup() {
   SimpleMenu *menu_monitor = new SimpleMenu("Dump", menu_main, dump);
   SimpleMenu *menu_more = new SimpleMenu("More", menu_main, NULL);
 
-  SimpleMenu *menu_monitor = new SimpleMenu("Monitor",menu_more,monitormode);
-  SimpleMenu *menu_load = new SimpleMenu("Raw Out",menu_more,rawout);
-  SimpleMenu *menu_about = new SimpleMenu("About",menu_more,SMN_screensaver);
   SimpleMenu *menu_settings = new SimpleMenu("Settings", menu_more, NULL);
+  SimpleMenu *menu_dump = new SimpleMenu("Monitor", menu_more, monitormode);
+  SimpleMenu *menu_scanner = new SimpleMenu("Freq.Analyzer", menu_more, freqenciesAnalyzer);
+  SimpleMenu *menu_extra = new SimpleMenu("More",menu_more, NULL);
+
+  SimpleMenu *menu_jammer = new SimpleMenu("Jammer", menu_extra, jammer);
+  SimpleMenu *menu_bruteforce = new SimpleMenu("Bruteforce", menu_extra, NULL);
+  SimpleMenu *menu_tesla = new SimpleMenu("Tesla", menu_extra, sendTeslaSignal);
+
+  SimpleMenu *came_bruteforce = new SimpleMenu("Came 12bit", menu_bruteforce, bruteforce, CAME);
+  SimpleMenu *nice_bruteforce = new SimpleMenu("Nice 12bit", menu_bruteforce, bruteforce, NICE);
+  SimpleMenu *faac_bruteforce = new SimpleMenu("FAAC 12bit", menu_bruteforce, bruteforce, FAAC);
 
   SimpleMenu *freq_setting = new SimpleMenu("Frequency", menu_settings, setFrequency);
   SimpleMenu *rxbw_setting = new SimpleMenu("RX Bandwidth", menu_settings, setBandwidth);
