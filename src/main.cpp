@@ -451,11 +451,8 @@ void bruteforce(int protocolIndex) {
   }
 }
 
-void setup() {
-  
-  CCInit();
-  CCSetMhz(used_frequency);
-  CCSetRx();
+void setup()
+{
   Serial.begin(1000000);
 
   SimpleMenu *menu_main = new SimpleMenu("Main");
@@ -483,6 +480,10 @@ void setup() {
   menu_dump->alertDone = false;
   menu_monitor->alertDone = false;
   SMN_initMenu(menu_main);
+
+  CCInit();
+  CCSetMhz(used_frequency);
+  CCSetRx();
  
   //// ENSURE RADIO OFF (FOR LESS INTERFERENCE?)
   esp_bluedroid_disable();
