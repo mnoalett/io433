@@ -361,29 +361,46 @@ void freqenciesAnalyzer() {
   }
 }
 
-void jammer() {
-  tft.fillScreen(TFT_BLACK);
-  tft.setFreeFont(FMB9);
-  tft.setTextColor(TFT_RED, TFT_BLACK);
-
+void jammer()
+{
   Serial.println("Jammer started");
   bool endloop = false;
+  int i;
+  unsigned int totalDelay = 0;
 
   CCInit();
   CCSetMhz(used_frequency);
   CCSetTx();
+  ELECHOUSE_cc1101.setPA(10);
   delay(50);
 
-  while (!endloop) {
     CCWrite(HIGH);
-    if (SMN_isAnyButtonPressed()) {
+  delayMicroseconds(500);
+  CCWrite(LOW);
+
+  int64_t startus = esp_timer_get_time();
+  while (!endloop)
+  {
+    byte n = 0;
+    for (i = 0; i < 60; i++)
+    {
+      CCWrite(n);
+      totalDelay = signal433_current[i] + delayus;
+      delayMicroseconds(totalDelay);
+      if (signal433_current[i] < RESET443)
+        n = !n;
+    }
+    CCWrite(0);
+    if (SMN_isAnyButtonPressed())
+    {
       endloop = true;
     }
-    drawSineWave();
   }
-
   CCSetRx();
-  Serial.println("Jammer stopped");
+
+  int64_t stopus = esp_timer_get_time();
+  Serial.print("Jammer Done (us): ");
+  Serial.println((long)(stopus - startus), DEC);
 }
 
 void sendTeslaSignal() {
