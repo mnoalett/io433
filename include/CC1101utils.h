@@ -34,7 +34,12 @@ void CCSetRxBW(int bandwidth) {
   ELECHOUSE_cc1101.setRxBW(bandwidth);
 }
 
-void CCInit() {
+void CCSetDRate(double rate)
+{
+  ELECHOUSE_cc1101.setDRate(rate);
+}
+
+void CCInit()
 
   ELECHOUSE_cc1101.setSpiPin(CCSCK, CCMISO, CCMOSI, CCCSN);
   ELECHOUSE_cc1101.Init();                // must be set to initialize the cc1101!

@@ -55,24 +55,29 @@ void loadSPIFFS(const char * path, uint16_t *signal433_store, uint16_t size){   
     }
 }
 
-void storeSPIFFS(const char * path, uint16_t *signal433_store, uint16_t size){      //Function that stores the recorded signals using SPIFFS
+void storeSPIFFS(const char *path, uint16_t *signal433_store, uint16_t size)
+{ // Function that stores the recorded signals using SPIFFS
     Serial.printf("Writing file: %s\r\n", path);
     File file = SPIFFS.open(path, FILE_WRITE);
-    if (!file) {
-        Serial.printf("Store failed for %s\n",path);
+    if (!file)
+    {
+        Serial.printf("Store failed for %s\n", path);
         return;
     }
    int i = 0;
-   while (i < size) {
-       file.write((unsigned char)(signal433_store[i]>>8 & 0xff));
+    while (i < size)
+    {
+        file.write((unsigned char)(signal433_store[i] >> 8 & 0xff));
        file.write((unsigned char)(signal433_store[i] & 0xff));
        i++;
     }
 }
 
-void saveFrequency(String freqname, double frequency) {  //Function to save in storage the selected frequency for a specific page
+void saveFrequency(String freqname, double frequency)
+{ // Function to save in storage the selected frequency for a specific page
     File freqFile = SPIFFS.open(freqname, "w");
-    if (!SPIFFS.exists(freqname)) {
+    if (!SPIFFS.exists(freqname))
+    {
         Serial.println("Failed to open frequency file for writing");
         return;
     }
@@ -80,11 +85,13 @@ void saveFrequency(String freqname, double frequency) {  //Function to save in s
     freqFile.close();
 }
 
-void readFrequency(String freqname) {       //Function that reads the saved frequency for a specific page
+void readFrequency(String freqname)
+{ // Function that reads the saved frequency for a specific page
     File freqFile = SPIFFS.open(freqname, "r");
-    if (!SPIFFS.exists(freqname)) {
+    if (!SPIFFS.exists(freqname))
+    {
         Serial.println("Creating file with default frequency");
-        saveFrequency(freqname, default_freq);  //avoids having 0.00 by default when recording a single for the first time on a page
+        saveFrequency(freqname, default_freq); // avoids having 0.00 by default when recording a single for the first time on a page
         return;
     }
 
@@ -92,9 +99,11 @@ void readFrequency(String freqname) {       //Function that reads the saved freq
     freqFile.close();
 }
 
-void saveBandwidth(String filename, int bandwidth) {
+void saveBandwidth(String filename, int bandwidth)
+{
     File file = SPIFFS.open(filename, "w");
-    if (!SPIFFS.exists(filename)) {
+    if (!SPIFFS.exists(filename))
+    {
         Serial.println("Failed to open bandwidth file for writing");
         return;
     }
@@ -102,13 +111,41 @@ void saveBandwidth(String filename, int bandwidth) {
     file.close();
 }
 
-void readBandwidth(String filename) {
+void readBandwidth(String filename)
+{
     File file = SPIFFS.open(filename, "r");
-    if (!SPIFFS.exists(filename)) {
+    if (!SPIFFS.exists(filename))
+    {
         Serial.println("Creating file with default bandwidth");
         saveBandwidth(filename, default_bandwidth);
         return;
     }
-    used_bandwidth = file.readString().toDouble();
+    used_bandwidth = file.readString().toInt();
+    file.close();
+}
+
+template <typename T>
+void saveValueToFile(String filename, T value)
+{
+    File file = SPIFFS.open(filename, "w");
+    if (!file)
+    {
+        Serial.println("Failed to open file for writing");
+        return;
+    }
+    file.print(value);
+    file.close();
+}
+
+void readDataRrate(String filename)
+{
+    File file = SPIFFS.open(filename, "r");
+    if (!SPIFFS.exists(filename))
+    {
+        Serial.println("Creating file with default bandwidth");
+        saveValueToFile(filename, default_drate);
+        return;
+    }
+    used_drate = file.readString().toDouble();
     file.close();
 }

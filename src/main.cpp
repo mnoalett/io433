@@ -21,6 +21,8 @@
 #define DUMP_RAW_MBPS 0.1 // as percentage of 1Mbps, us precision. (100kbps) This is mainly to dump and analyse in, ex, PulseView
 #define BOUND_SAMPLES false
 
+boolean settings_changed = true;
+
 uint16_t signal433_store[MAXSIGS][BUFSIZE];
 uint16_t *signal433_current = signal433_store[0];
 
@@ -219,7 +221,8 @@ void monitormode() {
   }
 }
 
-void setFrequency () {
+void setFrequency()
+{
   tft.fillScreen(TFT_BLACK);
   tft.setFreeFont(FMB24);
   tft.setTextColor(TFT_RED, TFT_BLACK);
@@ -228,45 +231,106 @@ void setFrequency () {
   int chose = 0;
   int totalFrequencies = sizeof(frequencies) / sizeof(frequencies[0]);
 
-  for (int i=0; i<totalFrequencies; i++) {
-    if (frequencies[i] == used_frequency) { chose = i; }
+  for (int i = 0; i < totalFrequencies; i++)
+  {
+    if (frequencies[i] == used_frequency)
+    {
+      chose = i;
+    }
   }
 
-  while (true) {
-    if (SMN_isUpButtonPressed()) { return; }
-    if (SMN_isDownButtonPressed()) {
+  while (true)
+  {
+    if (SMN_isUpButtonPressed())
+    {
+      settings_changed = true;
+      return;
+    }
+    if (SMN_isDownButtonPressed())
+    {
       delay(250);
       used_frequency = frequencies[chose];
-      chose +=1;
-      tft.drawString(String(used_frequency), 35, 45 , GFXFF);
-      String freqname = "/" + String(pcurrent) +".txt";
+      chose += 1;
+      tft.drawString(String(used_frequency), 35, 45, GFXFF);
+      String freqname = "/" + String(pcurrent) + ".txt";
       saveFrequency(freqname, used_frequency);
     }
-    if (chose >= totalFrequencies) { chose = 0; }
+    if (chose >= totalFrequencies)
+    {
+      chose = 0;
+    }
   }
 }
 
-void setBandwidth() {
+void setBandwidth()
+{
   tft.fillScreen(TFT_BLACK);
   tft.setFreeFont(FMB24);
   tft.setTextColor(TFT_RED, TFT_BLACK);
-  tft.drawString(String(used_bandwidth) + " KHz", 40, 45, GFXFF);
+  String text = String(used_bandwidth) + " KHz";
+  tft.drawString(text, (tft.width() - tft.textWidth(text)) / 2, 45, GFXFF);
 
   int chose = 0;
-  int totalBandwidths = sizeof(bandwidths) / sizeof(bandwidths[0]);
+  int arraySize = sizeof(bandwidths) / sizeof(bandwidths[0]);
 
-  while (true) {
-    if (SMN_isUpButtonPressed()) { return; }
-    if (SMN_isDownButtonPressed()) {
+  while (true)
+  {
+    if (SMN_isUpButtonPressed())
+    {
+      settings_changed = true;
+      return;
+    }
+    if (SMN_isDownButtonPressed())
+    {
       delay(250);
       used_bandwidth = bandwidths[chose];
-      chose +=1;
-      tft.drawString(String(used_bandwidth) + " KHz", 40, 45 , GFXFF);
+      chose += 1;
+      text = String(used_bandwidth) + " KHz";
+      tft.drawString(text, (tft.width() - tft.textWidth(text)) / 2, 45, GFXFF);
       String bandwidth = "/bandwidth.txt";
       saveBandwidth(bandwidth, used_bandwidth);
     }
-    if (chose >= totalBandwidths) { chose = 0; }
+    if (chose >= arraySize)
+    {
+      chose = 0;
+    }
   }
+}
+
+void setDataRate()
+{
+  tft.fillScreen(TFT_BLACK);
+  tft.setFreeFont(FMB18);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
+  String text = String((int)used_drate) + " kBaud";
+  tft.drawString(text, (tft.width() - tft.textWidth(text)) / 2, 45, GFXFF);
+
+  int chose = 0;
+  int arraySize = sizeof(data_rates) / sizeof(data_rates[0]);
+
+  while (true)
+  {
+    if (SMN_isUpButtonPressed())
+    {
+      settings_changed = true;
+      return;
+    }
+    if (SMN_isDownButtonPressed())
+    {
+      delay(250);
+      used_drate = data_rates[chose];
+      chose += 1;
+      text = String((int)used_drate) + " KBaud";
+      tft.drawString(text, (tft.width() - tft.textWidth(text)) / 2, 45, GFXFF);
+      String drate = "/drate.txt";
+      saveValueToFile(drate, used_drate);
+    }
+    if (chose >= arraySize)
+    {
+      chose = 0;
+    }
+  }
+}
 }
 
 // THIS IS OBVIOUSLY SLOW
@@ -492,7 +556,8 @@ void setup()
   SimpleMenu *faac_bruteforce = new SimpleMenu("FAAC 12bit", menu_bruteforce, bruteforce, FAAC);
 
   SimpleMenu *freq_setting = new SimpleMenu("Frequency", menu_settings, setFrequency);
-  SimpleMenu *rxbw_setting = new SimpleMenu("RX Bandwidth", menu_settings, setBandwidth);
+  SimpleMenu *rx_bandwidth_setting = new SimpleMenu("RX Bandwidth", menu_settings, setBandwidth);
+  SimpleMenu *data_rate_setting = new SimpleMenu("Data Rate", menu_settings, setDataRate);
 
   menu_dump->alertDone = false;
   menu_monitor->alertDone = false;
@@ -534,9 +599,15 @@ void loop() {
   delay(LOOPDELAY);
   signal433_current = signal433_store[pcurrent];
 
-  String freqname = "/" + String(pcurrent) +".txt";
+  String freqname = "/" + String(pcurrent) + ".txt";
   readFrequency(freqname);
+  if (settings_changed)
+  {
+    Serial.println("Settings changed. Reading new values");
   readBandwidth("/bandwidth.txt");
+    readDataRrate("/drate.txt");
+    settings_changed = false;
+  }
 
   if (SMN_idleMS() > HIBERNATEMS) {
     SMN_alert("SLEEPING...",100,3000);
