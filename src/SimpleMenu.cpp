@@ -2,35 +2,39 @@
 
 #include "SimpleMenu.h"
 
-
-SimpleMenu::SimpleMenu(char* value) {
-  name = value;  
+SimpleMenu::SimpleMenu(char *value)
+{
+  name = value;
   parent = NULL;
 }
 
-SimpleMenu::SimpleMenu(char* value, SimpleMenu *par) {
-  name = value;  
+SimpleMenu::SimpleMenu(char *value, SimpleMenu *par)
+{
+  name = value;
   parent = par;
   par->addChild(this);
 }
 
-SimpleMenu::SimpleMenu(char* value, SimpleMenu *par, Callback action) {
-  name = value;  
+SimpleMenu::SimpleMenu(char *value, SimpleMenu *par, Callback action)
+{
+  name = value;
   parent = par;
   actionSelect = action;
   par->addChild(this);
 }
 
-SimpleMenu::SimpleMenu(char* value, SimpleMenu *par, CallbackWithParam action, int intparam) {
-  name = value;  
+SimpleMenu::SimpleMenu(char *value, SimpleMenu *par, CallbackWithParam action, int intparam)
+{
+  name = value;
   parent = par;
   param = intparam;
   actionSelectWithParam = action;
   par->addChild(this);
 }
 
-SimpleMenu::SimpleMenu(char* value, SimpleMenu *par, Callback action, Callback actionend) {
-  name = value;  
+SimpleMenu::SimpleMenu(char *value, SimpleMenu *par, Callback action, Callback actionend)
+{
+  name = value;
   parent = par;
   actionSelect = action;
   actionEnd = actionend;
@@ -38,37 +42,45 @@ SimpleMenu::SimpleMenu(char* value, SimpleMenu *par, Callback action, Callback a
 }
 
 /////////////////////////////////////////////////////////////////
-void SimpleMenu::setParent(SimpleMenu *par){
-  parent = par;  
+void SimpleMenu::setParent(SimpleMenu *par)
+{
+  parent = par;
 }
 
 /////////////////////////////////////////////////////////////////
-void SimpleMenu::addChild(SimpleMenu *par){
-  if (ci < _SM_MAXCHILD) {
-    child[ci++] = par;  
+void SimpleMenu::addChild(SimpleMenu *par)
+{
+  if (ci < _SM_MAXCHILD)
+  {
+    child[ci++] = par;
     par->setParent(this);
   }
 }
 
-int SimpleMenu::getChildNum(){
+int SimpleMenu::getChildNum()
+{
   return ci;
-}; 
-  
+};
 
-/////////////////////////////////////////////////////////////////  
-void SimpleMenu::setAction(Callback action){
+/////////////////////////////////////////////////////////////////
+void SimpleMenu::setAction(Callback action)
+{
   actionSelect = action;
 }
 
-void SimpleMenu::setActionWithParam(CallbackWithParam action){
+void SimpleMenu::setActionWithParam(CallbackWithParam action)
+{
   actionSelectWithParam = action;
 }
 
 ////////////////////////////////////////////////////////////////
-void SimpleMenu::setSelectedChild(int i) {
-  if ((i >= 0) && (i < ci)) selected = i;
+void SimpleMenu::setSelectedChild(int i)
+{
+  if ((i >= 0) && (i < ci))
+    selected = i;
 }
 
-int SimpleMenu::getSelectedChild() {
- return selected; 
+int SimpleMenu::getSelectedChild()
+{
+  return selected;
 }
